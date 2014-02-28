@@ -1,0 +1,112 @@
+<!-- Formatar campo de valor monetário -->
+<script>
+var $scope;
+var app = angular.module('miniapp', []);
+
+function Ctrl($scope) {
+    $scope.currencyVal;
+}
+
+String.prototype.splice = function(idx, rem, s) {
+    return (this.slice(0, idx) + s + this.slice(idx + Math.abs(rem)));
+};
+
+app.directive('currency', function() {
+  var f;
+
+  f = function(modelValue, setdec) {
+    var decPart, decimalSplit, intDiv, intPart, lastComma;
+    if (setdec == null) {
+      setdec = true;
+    }
+    if (!modelValue) {
+      return modelValue;
+    }
+    decimalSplit = "".concat(modelValue).split(".");
+    intPart = decimalSplit[0];
+    decPart = decimalSplit[1];
+    intPart = intPart.replace(/[^\d]/g, "");
+    if (!intPart) {
+      intPart = "0";
+    }
+    if (intPart.length > 3) {
+      intDiv = Math.floor(intPart.length / 3);
+      while (intDiv > 0) {
+        lastComma = intPart.indexOf(",");
+        if (lastComma < 0) {
+          lastComma = intPart.length;
+        }
+        if (lastComma - 3 > 0) {
+          intPart = intPart.splice(lastComma - 3, 0, ",");
+        }
+        intDiv--;
+      }
+    }
+    if (decPart === undefined) {
+      if (setdec) {
+        decPart = ".00";
+      } else {
+        decPart = "";
+      }
+    } else {
+      if (setdec) {
+        if (decPart.length > 2) {
+          decPart = decPart.slice(0, 2);
+        }
+        while (decPart.length < 2) {
+          decPart = decPart + "0";
+        }
+      }
+      decPart = "." + decPart;
+    }
+    return ["R$ ", intPart, decPart].join("");
+  };
+  return {
+    require: "?ngModel",
+    restrict: "A",
+    link: function(scope, element, attr, ctrl) {
+      element.bind("keypress", function(e) {
+        var charCode, charCount, currentValue, end, insertValue, newValue, start;
+        charCode = (typeof e.which === "number" ? e.which : e.keyCode);
+        currentValue = element.val();
+        start = this.selectionStart;
+        end = this.selectionEnd;
+        insertValue = (charCode !== 0 ? String.fromCharCode(charCode) : "");
+        charCount = end - start;
+        newValue = currentValue.splice(start, charCount, insertValue);
+        if (charCode === 0 || charCode === 8) {
+          return;
+        }
+        if (String.fromCharCode(charCode).match(/[^\d.]/g)) {
+          e.preventDefault();
+        }
+        if (currentValue.search(/(.*)\.[0-9][0-9]/) === 0 && (currentValue.length - 3) < start) {
+          e.preventDefault();
+        }
+        if (newValue.split(".").length > 2 && charCode === 46) {
+          e.preventDefault();
+        }
+      });
+      element.bind("blur paste", function(e) {
+        return element.val(f(element.val()));
+      });
+      element.bind("keyup", function(e) {
+        return element.val(f(element.val(), false));
+      });
+      ctrl.$parsers.unshift(f);
+      return ctrl.$formatters.unshift(f);
+    }
+  };
+});
+
+
+</script>
+
+<div ng-app="miniapp">
+  <div ng-controller="Ctrl">
+    <h1>Valor: {{currencyVal}}</h1>
+    <form>
+      <input type="text" ng-model="currencyVal" currency="true"></input>
+    </form>            
+  </div> 
+</div>
